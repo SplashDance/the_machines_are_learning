@@ -144,13 +144,6 @@ df.cv &lt;- train[-inTrain, ]</code></pre>
 my.forest &lt;- randomForest(x=df.train[, -57], y=df.train[, 'classe'],
                           xtest=df.cv[, -57], ytest = df.cv[, 'classe'],
                           keep.forest = TRUE)
-
-
-# caption &lt;- 'Confusion Matrix from Random Forest Implementation'
-# fit.best.table &lt;- xtable(confusionMatrix(my.forest), floating=FALSE, 
-#                          caption = caption)
-# print.xtable(fit.best.table, comment=FALSE)
-
 my.forest</code></pre>
 <pre><code>## 
 ## Call:
@@ -178,7 +171,7 @@ my.forest</code></pre>
 </div>
 <div id="results" class="section level3">
 <h3>Results</h3>
-<p>As is evident from the <strong>Confusion Matrix</strong>, despite the simplicity of our model our results are very good. <strong>Random forests</strong> do often run the risk of <em>over-fitting</em>.</p>
+<p>As is evident from the <strong>Confusion Matrix</strong>, despite the simplicity of our model our results are very good. Since <strong>random forests</strong> do tend to run the risk of <em>over-fitting</em>, it’s important that we can ascertain an appropriate estimate of the out-of-sample error rate. Although the <strong>Out-of-Bag</strong> estimate of the error rate has been shown in tests of random forests to be an unbiased estimator of the error rate, we choose the error rate achieved for the <strong>cross-validation</strong> set as our estimate of out-of-sample error. Since the <strong>cross validation</strong> set was completely untouched while growing our random forest (after all, we only grew a <em>single</em> forest), this error rate will serve as a completely unbiased estimate. Nevertheless, the <strong>OOB</strong> estimate of the error rate gives us a glimpse of order of magnitude that we should expect. Indeed, as the results show, the estimate obtained via the <strong>cross-validation</strong> set is within only a few basis points of our <strong>OOB</strong> estimate.</p>
 </div>
 <div id="citations" class="section level3">
 <h3>Citations</h3>

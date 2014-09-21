@@ -5,8 +5,8 @@
 # Ignore csv files
 *.csv
 
-# Ignore temporary auxillary files I often create
-*aux.temp.R
+## Ignore temporary auxillary files I often create
+# *aux.temp.R
 
 # Ignore project files from Sublime Text 3
 *.sublime-project

@@ -15,6 +15,9 @@ library(lubridate)
 library(knitr)
 library(caret)
 library(randomForest)
+library(xtable)
+
+set.seed(12345678)
 ```
 
 
@@ -61,7 +64,7 @@ test <- dataset.load(test.file)
 
 After loading in the data, we must now do some basic pre-processing. Again, to ensure that both the training set and the test dataset are processed in *exactly* the same manner, I've encapsulated the main procedures in a function. Though the steps for data munging and pre-processing can become very complex for the most sophisticated machine learning techniques, the approach I've taken is very basic, reflecting the fairly straightforward task.
 
-```{r, data_munging, echo=TRUE}
+```{r, data_munging, echo=TRUE, cache=TRUE}
 
 df.cleaner <- function(dataframe, mask=mask95){
     # Takes 'dataframe' and cleans up entries
@@ -105,18 +108,17 @@ df.cv <- train[-inTrain, ]
 Now, before proceeding we should recognize a key insight: *We don't want to expend any more time and effort (and computing power!) than is necessary for our problem at hand.* Though the added bells and whistles provided by the **caret** package may be helpful for many circumstances, for *our* circumstance, it's not. In fact, as many fellow students can attest, using caret's `train` function can take upwards of an hour's worth of computing time (possibly even more) whereas a direct application of **randomForest**'s `randomForest` function completes the task in only seconds while sacrificing a minimal amount of predictive accuracy in doing so.
 
 
-```{r, forest_growing, echo=TRUE, cache=TRUE}
-
+```{r, forest_growing, echo=TRUE, cache=TRUE, message=FALSE}
+# results='asis', prompt=FALSE, echo=FALSE, message=FALSE
 my.forest <- randomForest(x=df.train[, -57], y=df.train[, 'classe'],
                           xtest=df.cv[, -57], ytest = df.cv[, 'classe'],
                           keep.forest = TRUE)
-
-print(my.forest)
+my.forest
 ```
 
 ### Results
 
-As is evident from the **Confusion Matrix**, despite the simplicity of our model our results are very good.  **Random forests** do often run the risk of *over-fitting*.
+As is evident from the **Confusion Matrix**, despite the simplicity of our model our results are very good.  Since **random forests** do tend to run the risk of *over-fitting*, it's important that we can ascertain an appropriate estimate of the out-of-sample error rate. Although the **Out-of-Bag** estimate of the error rate has been shown in tests of random forests to be an unbiased estimate of the error rate, we choose the error rate achieved for the **cross-validation** set as our estimate of out-of-sample error. Since the **cross validation** set was completely untouched while growing our random forest (after all, we only grew a *single* forest), this error rate will serve as a completely unbiased estimate. Nevertheless, the **OOB** estimate of the error rate gives us a glimpse of order of magnitude that we should expect. Clearly, 
 
 
 

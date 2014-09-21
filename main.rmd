@@ -1,0 +1,127 @@
+---
+title: "Machine Learning Prediction Assignment"
+author: "Steve Sargent"
+date: "September 6, 2014"
+output: html_document
+---
+
+### Introduction
+
+With the growth of the so-called "*quantified self*" movement, there has been an increased demand for data collection tools (and computational strategies for analyzing said data) relating to personal wellness. However, while much research has been dedicated to the purely quantitative measurements--for instance, counting steps taken or calories burned--very little research has been focused on the *qualitative* aspects of movement and exercise. In other words, while many reasearchers have analyzed "*how much*", few have sought to describe "*how well*".
+
+
+```{r loading_packages, echo=TRUE, results='hide', message=FALSE, tidy=TRUE}
+library(lubridate)
+library(knitr)
+library(caret)
+library(randomForest)
+```
+
+
+```{r downloading_data, echo=TRUE, cache=TRUE}
+
+# Give our datasets some good names:
+train.file <- "training.csv"
+test.file <- "test.csv"
+
+## Downloading Training & Testing datasets:
+# download necessary files if they aren't already in your current working
+# directory.
+if (!(train.file %in% list.files())){
+    site.train <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+    site.test <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+    download.file(url = site.train, method='curl', destfile = './training.csv')
+    download.file(url = site.test, method='curl', destfile = './test.csv')
+}
+```
+
+### Loading the Data & Basic Pre-Processing
+
+After downloading the training and testing datasets, we now load the data into **R** and perform some (very) basic Pre-Processing. However, before doing so, a couple of quick points should be discussed.  
+
+First of all, care must be taken to ensure that the same pre-processing steps that we perform on our training set will also be *exactly* replicated when we load our testing dataset. In fact, a failure to do so could, ultimately, bias our results. Thus, I've taken steps to excapsulate the appropriate commands into functions, ensuring that the same steps performed on our training will later be performed on testing set.
+
+Second, although we must avoid looking at our testing dataset, nothing precludes us from a preliminary examination of training set, either by loading the data into **R** or even merely opening up the csv file into a text editor in order to get a feel for the structure. In fact, after doing so it is apparent that many of the columns contain missing values. In addition, since some of these columns are almost entirely composed of missing values, we may consider deleting them altogether as it is unlikely the remaining values will inlclude much informational content.
+
+```{r, data_loading, echo=TRUE, cache=TRUE}
+dataset.load <- function(filepath){
+    # A function with all the necessary specifications in place for loading
+    # our data frame so that we can ensure that both the training and test
+    # sets will be loaded in exactly the same way
+
+    ## Note: here I am setting the "#DIV/0!" errors equal to "NA"--this may be
+    ## throwing away information, however...
+    df <- read.table(filepath, sep=',', header=TRUE, stringsAsFactors = FALSE,
+                     na.strings = c("NA", "", "#DIV/0!"))
+    return(df)
+}
+train <- dataset.load(train.file)
+test <- dataset.load(test.file)
+```
+
+After loading in the data, we must now do some basic pre-processing. Again, to ensure that both the training set and the test dataset are processed in *exactly* the same manner, I've encapsulated the main procedures in a function. Though the steps for data munging and pre-processing can become very complex for the most sophisticated machine learning techniques, the approach I've taken is very basic, reflecting the fairly straightforward task.
+
+```{r, data_munging, echo=TRUE}
+
+df.cleaner <- function(dataframe, mask=mask95){
+    # Takes 'dataframe' and cleans up entries
+    #
+    # --> This is created so it can be used for both training & test sets
+    # Also, can be passed additional masks.
+    
+    # Change name of column to 'date.time' and parse via lubridate
+    require(lubridate)
+    names(dataframe)[5] <- 'date.time'
+    dataframe$date.time <- dmy_hm(dataframe$date.time)
+
+    # converts this column from character to boolean
+    dataframe$new_window <- dataframe$new_window == 'yes'
+
+    # ensures predicted variable is a factor
+    if ('classe' %in% names(dataframe)){
+        dataframe$classe <- factor(dataframe$classe)
+    }
+    df <- dataframe[, mask]
+    df <- df[, -c(1, 2, 5)]
+    return(df)
+}
+
+# select only those entries with 95% of data
+mask95 <- colMeans(is.na(train)) <= 0.95
+
+train <- df.cleaner(train, mask95)
+test <- df.cleaner(test, mask95)
+
+
+# Partition the training set into a set to train the model and 
+# a cross-validation set using caret's "createDataPartition" function
+inTrain <- createDataPartition(y = train[, 57], p=0.70, list=FALSE)
+df.train <- train[inTrain, ]
+df.cv <- train[-inTrain, ]
+```
+
+### Training Our First Model
+
+Now, before proceeding we should recognize a key insight: *We don't want to expend any more time and effort (and computing power!) than is necessary for our problem at hand.* Though the added bells and whistles provided by the **caret** package may be helpful for many circumstances, for *our* circumstance, it's not. In fact, as many fellow students can attest, using caret's `train` function can take upwards of an hour's worth of computing time (possibly even more) whereas a direct application of **randomForest**'s `randomForest` function completes the task in only seconds while sacrificing a minimal amount of predictive accuracy in doing so.
+
+
+```{r, forest_growing, echo=TRUE, cache=TRUE}
+
+my.forest <- randomForest(x=df.train[, -57], y=df.train[, 'classe'],
+                          xtest=df.cv[, -57], ytest = df.cv[, 'classe'],
+                          keep.forest = TRUE)
+
+print(my.forest)
+```
+
+### Results
+
+As is evident from the **Confusion Matrix**, despite the simplicity of our model our results are very good.  **Random forests** do often run the risk of *over-fitting*.
+
+
+
+### Citations
+
+Ugulino, W.; Cardador, D.; Vega, K.; Velloso, E.; Milidiu, R.; Fuks, H. Wearable Computing: Accelerometers' Data Classification of Body Postures and Movements. Proceedings of 21st Brazilian Symposium on Artificial Intelligence. Advances in Artificial Intelligence - SBIA 2012. In: Lecture Notes in Computer Science. , pp. 52-61. Curitiba, PR: Springer Berlin / Heidelberg, 2012. ISBN 978-3-642-34458-9. DOI: 10.1007/978-3-642-34459-6_6.
+
+Read more: http://groupware.les.inf.puc-rio.br/har#ixzz3DyehIzXo 

@@ -8,8 +8,8 @@
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <meta name="generator" content="pandoc" />
 
-<meta name="author" content="Steve Sargent" />
 
+<meta name="date" content="2014-09-21" />
 
 <title>Machine Learning Prediction Assignment</title>
 
@@ -53,25 +53,25 @@ if (window.hljs && document.readyState && document.readyState === "complete") {
 
 <div id="header">
 <h1 class="title">Machine Learning Prediction Assignment</h1>
-<h4 class="author"><em>Steve Sargent</em></h4>
-<h4 class="date"><em>September 6, 2014</em></h4>
+<h4 class="date"><em>September 21, 2014</em></h4>
 </div>
 
 
 <div id="introduction" class="section level3">
 <h3>Introduction</h3>
-<p>With the growth of the so-called “<em>quantified self</em>” movement, there has been an increased demand for data collection tools (and computational strategies for analyzing said data) relating to personal wellness. However, while much research has been dedicated to the purely quantitative measurements–for instance, counting steps taken or calories burned–very little research has been focused on the <em>qualitative</em> aspects of movement and exercise. In other words, while many reasearchers have analyzed “<em>how much</em>”, few have sought to describe “<em>how well</em>”.</p>
+<p>With the growth of the so-called “<em>quantified self</em>” movement, there has been an increased demand for data collection tools (and computational strategies for analyzing said data) relating to personal wellness. However, while much research has been dedicated to the purely quantitative measurements–for instance, counting steps taken or calories burned–very little research has been focused on the <em>qualitative</em> aspects of movement and exercise. In other words, while many reasearchers have analyzed “<em>how much</em>”, few have sought to describe “<em>how well</em>”. It’s with this basic premise in mind that we proceed with our current machine learning project: An attempt at using aggregated sensor data in order to identify and classify the <em>quality</em> of certain exercises performed [Note: For more information regarding the actual experiment performed, please see the “Citations” section of this report].</p>
+</div>
+<div id="downloading-the-necessary-data" class="section level3">
+<h3>Downloading the Necessary Data</h3>
+<p>Before we can begin our analysis, we first have to load the necessary packages as well as actually <em>assemble</em> our data. This latter step can often be the most difficult for a data scientist. Fortunately, the original researchers have graciously allowed us access to their dataset, greatly facilitating this often time-consuming step:</p>
 <pre class="r"><code>library(lubridate)
 library(knitr)
 library(caret)
 library(randomForest)
-library(xtable)
-
 set.seed(12345678)</code></pre>
 <pre class="r"><code># Give our datasets some good names:
 train.file &lt;- &quot;training.csv&quot;
 test.file &lt;- &quot;test.csv&quot;
-
 ## Downloading Training &amp; Testing datasets:
 # download necessary files if they aren't already in your current working
 # directory.
@@ -85,8 +85,8 @@ if (!(train.file %in% list.files())){
 <div id="loading-the-data-basic-pre-processing" class="section level3">
 <h3>Loading the Data &amp; Basic Pre-Processing</h3>
 <p>After downloading the training and testing datasets, we now load the data into <strong>R</strong> and perform some (very) basic Pre-Processing. However, before doing so, a couple of quick points should be discussed.</p>
-<p>First of all, care must be taken to ensure that the same pre-processing steps that we perform on our training set will also be <em>exactly</em> replicated when we load our testing dataset. In fact, a failure to do so could, ultimately, bias our results. Thus, I’ve taken steps to excapsulate the appropriate commands into functions, ensuring that the same steps performed on our training will later be performed on testing set.</p>
-<p>Second, although we must avoid looking at our testing dataset, nothing precludes us from a preliminary examination of training set, either by loading the data into <strong>R</strong> or even merely opening up the csv file into a text editor in order to get a feel for the structure. In fact, after doing so it is apparent that many of the columns contain missing values. In addition, since some of these columns are almost entirely composed of missing values, we may consider deleting them altogether as it is unlikely the remaining values will inlclude much informational content.</p>
+<p>First of all, care must be taken to ensure that the same pre-processing steps that we perform on our training set will also be <em>exactly</em> replicated when we load our testing dataset. In fact, a failure to do so could, ultimately, bias our results. Thus, I’ve taken steps to encapsulate the appropriate commands into functions, ensuring that the same steps performed on our training set will later be performed on testing set.</p>
+<p>Second, although we must avoid looking at our testing dataset, nothing precludes us from a preliminary examination of training set, either by loading the data into <strong>R</strong> or even merely opening up the csv file into a text editor in order to get a feel for the structure. In fact, after doing so it is apparent that many of the columns contain missing values. In addition, since some of these columns are almost entirely composed of missing values, we may consider deleting them altogether as it is unlikely the remaining values will inlclude much informational content. Though this may seem like a minor point now, getting rid of a large proportion of columns will greatly speed up the running time of our algorithms later on.</p>
 <pre class="r"><code>dataset.load &lt;- function(filepath){
     # A function with all the necessary specifications in place for loading
     # our data frame so that we can ensure that both the training and test
@@ -100,13 +100,10 @@ if (!(train.file %in% list.files())){
 }
 train &lt;- dataset.load(train.file)
 test &lt;- dataset.load(test.file)</code></pre>
-<p>After loading in the data, we must now do some basic pre-processing. Again, to ensure that both the training set and the test dataset are processed in <em>exactly</em> the same manner, I’ve encapsulated the main procedures in a function. Though the steps for data munging and pre-processing can become very complex for the most sophisticated machine learning techniques, the approach I’ve taken is very basic, reflecting the fairly straightforward task.</p>
+<p>After loading in the data, we must now do some basic pre-processing. Again, to ensure that both the training set and the test dataset are processed in <em>exactly</em> the same manner, I’ve encapsulated the main procedures in a function. Though the steps for data munging and pre-processing can become very complex for the most sophisticated machine learning techniques, the approach I’ve taken is very basic, reflecting the fairly straightforward task at hand.</p>
 <pre class="r"><code>df.cleaner &lt;- function(dataframe, mask=mask95){
     # Takes 'dataframe' and cleans up entries
-    #
-    # --&gt; This is created so it can be used for both training &amp; test sets
     # Also, can be passed additional masks.
-    
     # Change name of column to 'date.time' and parse via lubridate
     require(lubridate)
     names(dataframe)[5] &lt;- 'date.time'
@@ -123,13 +120,11 @@ test &lt;- dataset.load(test.file)</code></pre>
     df &lt;- df[, -c(1, 2, 5)]
     return(df)
 }
-
 # select only those entries with 95% of data
 mask95 &lt;- colMeans(is.na(train)) &lt;= 0.95
 
 train &lt;- df.cleaner(train, mask95)
 test &lt;- df.cleaner(test, mask95)
-
 
 # Partition the training set into a set to train the model and 
 # a cross-validation set using caret's &quot;createDataPartition&quot; function
@@ -139,7 +134,7 @@ df.cv &lt;- train[-inTrain, ]</code></pre>
 </div>
 <div id="training-our-first-model" class="section level3">
 <h3>Training Our First Model</h3>
-<p>Now, before proceeding we should recognize a key insight: <em>We don’t want to expend any more time and effort (and computing power!) than is necessary for our problem at hand.</em> Though the added bells and whistles provided by the <strong>caret</strong> package may be helpful for many circumstances, for <em>our</em> circumstance, it’s not. In fact, as many fellow students can attest, using caret’s <code>train</code> function can take upwards of an hour’s worth of computing time (possibly even more) whereas a direct application of <strong>randomForest</strong>’s <code>randomForest</code> function completes the task in only seconds while sacrificing a minimal amount of predictive accuracy in doing so.</p>
+<p>Now, before proceeding we should recognize another key insight: <em>We don’t want to expend any more time and effort (and computing power!) than is absolutely necessary for our problem.</em> Though the added bells and whistles provided by the <strong>caret</strong> package may be helpful for many circumstances, for <em>our</em> circumstance, it’s not. In fact, as many fellow students can attest, using caret’s <code>train</code> function can take upwards of an hour’s worth of computing time (possibly even more) whereas a direct application of <strong>randomForest</strong>’s <code>randomForest</code> function completes the task in only seconds while sacrificing a minimal amount of predictive accuracy in doing so.</p>
 <pre class="r"><code># results='asis', prompt=FALSE, echo=FALSE, message=FALSE
 my.forest &lt;- randomForest(x=df.train[, -57], y=df.train[, 'classe'],
                           xtest=df.cv[, -57], ytest = df.cv[, 'classe'],
@@ -171,7 +166,7 @@ my.forest</code></pre>
 </div>
 <div id="results" class="section level3">
 <h3>Results</h3>
-<p>As is evident from the <strong>Confusion Matrix</strong>, despite the simplicity of our model our results are very good. Since <strong>random forests</strong> do tend to run the risk of <em>over-fitting</em>, it’s important that we can ascertain an appropriate estimate of the out-of-sample error rate. Although the <strong>Out-of-Bag</strong> estimate of the error rate has been shown in tests of random forests to be an unbiased estimator of the error rate, we choose the error rate achieved for the <strong>cross-validation</strong> set as our estimate of out-of-sample error. Since the <strong>cross validation</strong> set was completely untouched while growing our random forest (after all, we only grew a <em>single</em> forest), this error rate will serve as a completely unbiased estimate. Nevertheless, the <strong>OOB</strong> estimate of the error rate gives us a glimpse of order of magnitude that we should expect. Indeed, as the results show, the estimate obtained via the <strong>cross-validation</strong> set is within only a few basis points of our <strong>OOB</strong> estimate.</p>
+<p>As is evident from the <strong>Confusion Matrix</strong>, our results are actually very good despite the simplicity of our model. Since <strong>random forests</strong> do tend to run the risk of <em>over-fitting</em>, it’s important that we can ascertain an appropriate estimate of the out-of-sample error rate. Although the <strong>Out-of-Bag</strong> estimate of the error rate has been shown in tests of random forests to be an unbiased estimator of the error rate, we choose the error rate achieved for the <strong>cross-validation</strong> set as our estimate of out-of-sample error. Since the <strong>cross validation</strong> set was completely untouched while growing our random forest (after all, we only grew a <em>single</em> forest), this error rate will serve as a completely unbiased estimate. Nevertheless, the <strong>OOB</strong> estimate of the error rate gives us a glimpse of order of magnitude that we should expect. Indeed, as the results show, the estimate obtained via the <strong>cross-validation</strong> set is within only a few basis points of our <strong>OOB</strong> estimate.</p>
 </div>
 <div id="citations" class="section level3">
 <h3>Citations</h3>
